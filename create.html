@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Blog - MyBlog</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+    <h2>MyBlog</h2>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="login.html">Login</a>
+        <a href="register.html">Register</a>
+        <a href="dashboard.html">Dashboard</a>
+    </nav>
+</header>
+
+<section class="blogs">
+    <div class="blog-card">
+        <h1>Create a New Blog</h1>
+            <form id="blogForm">
+    <p>Blog Title</p>
+    <input type="text" id="blogTitle"
+           placeholder="Enter blog title" required>
+
+    <br><br>
+
+    <p>Blog Content</p>
+    <textarea id="blogContent" rows="8" cols="40"
+              placeholder="Write your blog here..."
+              required></textarea>
+
+    <br><br>
+
+    <button type="submit" id="submitBlogBtn">
+        Publish Blog
+    </button>
+</form>
+
+    </div>
+</section>
+
+<footer>
+    <p>© 2026 Codomax Blog Application. All rights reserved.</p>
+</footer>
+<script src="js/app.js"></script>
+</body>
+</html>
