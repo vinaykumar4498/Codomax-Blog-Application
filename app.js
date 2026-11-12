@@ -297,74 +297,70 @@ window.addEventListener("click", function(event) {
 
 // --- Register Page (register.html) ---
 
-function initRegisterPage() {
+   function initRegisterPage() {
     const form = document.getElementById("registerForm");
     if (!form) return;
 
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const name = document.getElementById("regName").value.trim();
         const email = document.getElementById("regEmail").value.trim().toLowerCase();
         const password = document.getElementById("regPassword").value;
-        const confirmPassword = document.getElementById("regConfirmPassword") 
-            ? document.getElementById("regConfirmPassword").value 
-            : password;
 
         if (!name || !email || !password) {
-            showAlert("alertContainer", "Please fill in all required fields.");
+            showAlert("alertContainer", "Please fill in all fields.");
             return;
         }
 
-        if (password.length < 6) {
-            showAlert("alertContainer", "Password must be at least 6 characters long.");
-            return;
+        try {
+            const response = await fetch("http://localhost:3000/api/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name: name,
+                    email: email,
+                    password: password
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                showAlert("alertContainer", data.message || "Registration failed.");
+                return;
+            }
+
+            showAlert(
+                "alertContainer",
+                "Registration successful! You can now login.",
+                "success"
+            );
+
+            form.reset();
+
+        } catch (error) {
+            showAlert(
+                "alertContainer",
+                "Cannot connect to the backend server."
+            );
+
+            console.error(error);
         }
-
-        if (password !== confirmPassword) {
-            showAlert("alertContainer", "Passwords do not match!");
-            return;
-        }
-
-        const users = getUsers();
-        const existing = users.find(u => u.email.toLowerCase() === email);
-        if (existing) {
-            showAlert("alertContainer", "An account with this email already exists. Please log in.");
-            return;
-        }
-
-        const newUser = {
-            id: "user-" + Date.now(),
-            name,
-            email,
-            password
-        };
-
-        users.push(newUser);
-        saveUsers(users);
-
-        // Auto login the user
-        setCurrentUser({
-            id: newUser.id,
-            name: newUser.name,
-            email: newUser.email
-        });
-
-        showAlert("alertContainer", "Account created successfully! Redirecting to dashboard...", "success");
-
-        setTimeout(() => {
-            window.location.href = "dashboard.html";
-        }, 1200);
     });
 }
 
 // --- Login Page (login.html) ---
 
+  // --- Login Page (login.html) ---
+
 function initLoginPage() {
     const form = document.getElementById("loginForm");
     if (!form) return;
 
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const email = document.getElementById("loginEmail").value.trim().toLowerCase();
@@ -375,133 +371,174 @@ function initLoginPage() {
             return;
         }
 
-        const users = getUsers();
-        const user = users.find(u => u.email.toLowerCase() === email && u.password === password);
+        try {
+            const response = await fetch("http://localhost:3000/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
+            });
 
-        if (!user) {
-            showAlert("alertContainer", "Invalid email or password. Please try again.");
-            return;
+            const data = await response.json();
+
+            if (!response.ok) {
+                showAlert(
+                    "alertContainer",
+                    data.message || "Invalid email or password."
+                );
+                return;
+            }
+
+            // Save logged-in user
+            setCurrentUser({
+                name: data.user.name,
+                email: data.user.email
+            });
+
+            showAlert(
+                "alertContainer",
+                "Login successful! Redirecting...",
+                "success"
+            );
+
+            setTimeout(() => {
+                window.location.href = "dashboard.html";
+            }, 1000);
+
+        } catch (error) {
+            showAlert(
+                "alertContainer",
+                "Cannot connect to the backend server."
+            );
+
+            console.error(error);
         }
-
-        setCurrentUser({
-            id: user.id,
-            name: user.name,
-            email: user.email
-        });
-
-        showAlert("alertContainer", "Login successful! Redirecting...", "success");
-
-        setTimeout(() => {
-            window.location.href = "dashboard.html";
-        }, 1000);
     });
 }
-
 // --- Create / Edit Blog Page (create.html) ---
 
 function initCreatePage() {
-    const form = document.getElementById("blogForm");
-    if (!form) return;
+    const blogForm = document.getElementById("blogForm");
+    const blogTitle = document.getElementById("blogTitle");
+    const blogCategory = document.getElementById("blogCategory");
+    const blogAuthor = document.getElementById("blogAuthor");
+    const blogContent = document.getElementById("blogContent");
+    const submitBlogBtn = document.getElementById("submitBlogBtn");
+    const alertContainer = document.getElementById("alertContainer");
 
-    const titleInput = document.getElementById("blogTitle");
-    const categorySelect = document.getElementById("blogCategory");
-    const authorInput = document.getElementById("blogAuthor");
-    const contentInput = document.getElementById("blogContent");
-    const submitBtn = document.getElementById("submitBlogBtn");
-    const pageHeading = document.getElementById("createPageHeading");
+    if (!blogForm) return;
 
-    const currentUser = getCurrentUser();
-    if (currentUser && authorInput) {
-        authorInput.value = currentUser.name;
-    }
+    blogForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
 
-    // Check if in edit mode
-    const urlParams = new URLSearchParams(window.location.search);
-    const editId = urlParams.get("edit");
-    let editBlog = null;
-
-    if (editId) {
-        const blogs = getBlogs();
-        editBlog = blogs.find(b => b.id === editId);
-
-        if (editBlog) {
-            if (pageHeading) pageHeading.textContent = "Edit Blog Post";
-            if (titleInput) titleInput.value = editBlog.title;
-            if (categorySelect) categorySelect.value = editBlog.category || "General";
-            if (authorInput) authorInput.value = editBlog.author;
-            if (contentInput) contentInput.value = editBlog.content;
-            if (submitBtn) submitBtn.textContent = "Save Changes";
-        }
-    }
-
-    form.addEventListener("submit", (e) => {
-        e.preventDefault();
-
-        const title = titleInput.value.trim();
-        const category = categorySelect ? categorySelect.value : "General";
-        const author = authorInput ? authorInput.value.trim() : (currentUser ? currentUser.name : "Anonymous");
-        const content = contentInput.value.trim();
+        const title = blogTitle.value.trim();
+        const category = blogCategory.value;
+        const author = blogAuthor.value.trim() || "Anonymous";
+        const content = blogContent.value.trim();
 
         if (!title || !content) {
-            showAlert("alertContainer", "Please fill in the blog title and content.");
+            showAlert(alertContainer, "Please enter title and content.", "error");
             return;
         }
 
-        let blogs = getBlogs();
+        submitBlogBtn.disabled = true;
+        submitBlogBtn.textContent = "Publishing...";
 
-        if (editBlog) {
-            // Update existing
-            editBlog.title = title;
-            editBlog.category = category;
-            editBlog.author = author;
-            editBlog.content = content;
-            editBlog.date = new Date().toISOString().split("T")[0]; // update modified date
+        try {
+            const response = await fetch("http://localhost:3000/api/blogs", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    title: title,
+                    category: category,
+                    author: author,
+                    content: content
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || "Failed to create blog");
+            }
+
+            // Also save locally so the Dashboard can display it
+            const blogs = getBlogs();
+
+            blogs.push({
+                id: data.blog.id,
+                title: data.blog.title,
+                category: category,
+                author: data.blog.author,
+                content: data.blog.content,
+                date: new Date().toISOString()
+            });
+
             saveBlogs(blogs);
 
-            showAlert("alertContainer", "Blog updated successfully! Redirecting...", "success");
+            showAlert(
+                alertContainer,
+                "Blog published successfully!",
+                "success"
+            );
+
             setTimeout(() => {
                 window.location.href = "dashboard.html";
-            }, 1000);
-        } else {
-            // Create new
-            const newBlog = {
-                id: Date.now().toString(),
-                title,
-                category,
-                content,
-                author: author || "Anonymous",
-                authorEmail: currentUser ? currentUser.email : "guest@myblog.com",
-                date: new Date().toISOString().split("T")[0],
-                likes: 0
-            };
+            }, 800);
 
-            blogs.unshift(newBlog); // Add new blog to top of the list
-            saveBlogs(blogs);
+        } catch (error) {
+            console.error("Create blog error:", error);
 
-            showAlert("alertContainer", "Blog published successfully! Redirecting...", "success");
-            setTimeout(() => {
-                window.location.href = "dashboard.html";
-            }, 1000);
+            showAlert(
+                alertContainer,
+                "Could not connect to the backend server.",
+                "error"
+            );
+
+            submitBlogBtn.disabled = false;
+            submitBlogBtn.textContent = "Publish Blog";
         }
     });
 }
 
 // --- Dashboard Page (dashboard.html) ---
+async function getBlogsFromBackend() {
+    try {
+        const response = await fetch("http://localhost:3000/api/blogs");
 
-function initDashboardPage() {
+        if (!response.ok) {
+            throw new Error("Failed to fetch blogs");
+        }
+
+        const blogs = await response.json();
+
+        return blogs;
+
+    } catch (error) {
+        console.error("Backend blog error:", error);
+        return [];
+    }
+}
+ async function initDashboardPage() {
     const userBanner = document.getElementById("userBanner");
     const myBlogsContainer = document.getElementById("myBlogsContainer");
     if (!myBlogsContainer) return;
 
     const currentUser = getCurrentUser();
-    const allBlogs = getBlogs();
+    const allBlogs = await getBlogsFromBackend();
 
     if (!currentUser) {
         if (userBanner) {
             userBanner.innerHTML = `
                 <div class="guest-banner">
                     <p>💡 You are currently browsing as a <strong>Guest</strong>. Log in to manage your posts and track your blogs.</p>
-                    <div style="margin-top: 10px;">
+                    <div sconst alltyle="margin-top: 10px;">
                         <a href="login.html"><button>Login</button></a>
                         <a href="register.html" style="margin-left: 10px;"><button class="btn-secondary">Register</button></a>
                     </div>
@@ -624,11 +661,3 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-document.addEventListener("DOMContentLoaded", function () {
-    renderNavbar();
-    initIndexPage();
-    initRegisterPage();
-    initLoginPage();
-    initCreatePage();
-    initDashboardPage();
-});
